@@ -1,4 +1,5 @@
 # jf361_ids706_mp6
+[![Python SQL CI](https://github.com/siyiia/jf361_ids706_mp6/actions/workflows/cicd.yml/badge.svg)](https://github.com/siyiia/jf361_ids706_mp6/actions/workflows/cicd.yml)
 
 ## Project Introduction
 This project is to design a complex SQL query for a Database
