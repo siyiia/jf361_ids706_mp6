@@ -1,40 +1,52 @@
-import sqlite3
-import pandas as pd
 import os
+from dotenv import load_dotenv
+from databricks import sql
 
 
 # Function to connect to the database
-def connect_db(db_name="student.db"):
-    conn = sqlite3.connect(db_name)
-    print(f"Connected to {db_name}")
-    return conn
+def connect_db():
+    load_dotenv()
+    connection = sql.connect(
+        server_hostname=os.getenv("SERVER_HOSTNAME"),
+        http_path=os.getenv("HTTP_PATH"),
+        access_token=os.getenv("DATABRICKS_KEY"),
+    )
+    print("Connected to database")
+    return connection
 
 
 # Function to create a table (Create operation)
-def create_table(conn, create_tables):
+def create_table(cursor, create_tables):
     try:
         for table_name, create_query in create_tables.items():
-            conn.execute(create_query)
+            cursor.execute(create_query)
             print(f"Table {table_name} created successfully!")
+            return "Table created"
 
-    except sqlite3.Error as e:
+    except sql.Error as e:
         print(f"Error creating table: {e}")
 
 
 # Inserting data into the tables
-def insert_data(table_name, dataframe, conn):
-    try:
-        for _, row in dataframe.iterrows():
-            placeholders = ", ".join(["?"] * len(row))
-            columns = ", ".join(row.index)
-            sql = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
-            conn.execute(sql, tuple(row))
-        print(f"Record inserted successfully of table {table_name}")
-    except sqlite3.Error as e:
-        print(f"Error inserting record: {e}")
+def insert_data(table_name, dataframe, cursor):
+    cursor.execute(f"SELECT * FROM {table_name}")
+    result = cursor.fetchall()
+    if not result:
+        try:
+            for _, row in dataframe.iterrows():
+                placeholders = ", ".join(["?"] * len(row))
+                columns = ", ".join(row.index)
+                sql_command = (
+                    f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
+                )
+                cursor.execute(sql_command, tuple(row))
+            print(f"Record inserted successfully of table {table_name}")
+            return "Record"
+        except sql.Error as e:
+            print(f"Error inserting record: {e}")
 
 
-def run_complex_query(conn):
+def run_complex_query(cursor):
     query = """
     SELECT 
         s.Gender,
@@ -54,7 +66,6 @@ def run_complex_query(conn):
         avg_exam_score DESC;
     """
 
-    cursor = conn.cursor()
     cursor.execute(query)
 
     rows = cursor.fetchall()
@@ -67,7 +78,7 @@ def run_complex_query(conn):
             f"{row[0]:<6} | {row[1]:<12} | {row[2]:<18} | {row[3]:<17.2f} | {row[4]:<14.2f}"
         )
     print("\nQuery executed and results fetched successfully!")
-
+    return "Query Successful"
 
 def main():
     # Load the CSV file
@@ -92,7 +103,7 @@ def main():
     create_tables = {
         "Student": """
         CREATE TABLE IF NOT EXISTS Student (
-            student_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id INTEGER PRIMARY KEY,
             Gender VARCHAR(10),
             Distance_from_Home VARCHAR(10)
         );
@@ -117,21 +128,20 @@ def main():
         """,
     }
 
-    db_name = "student.db"
-    if os.path.exists(db_name):
-        os.remove(db_name)
+    conn = connect_db()
+    cursor = conn.cursor()
+    create_table(cursor, create_tables)
 
-    conn = connect_db(db_name)
-    create_table(conn, create_tables)
+    insert_data("Student", student_data, cursor)
+    insert_data("StudyFactors", study_factors_data, cursor)
+    insert_data("AcademicPerformance", academic_performance_data, cursor)
 
-    insert_data("Student", student_data, conn)
-    insert_data("StudyFactors", study_factors_data, conn)
-    insert_data("AcademicPerformance", academic_performance_data, conn)
+    run_complex_query(cursor)
 
-    run_complex_query(conn)
-
+    cursor.close()
     conn.close()
 
 
 if __name__ == "__main__":
     main()
+

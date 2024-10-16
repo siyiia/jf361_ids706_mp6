@@ -2,3 +2,5 @@ pylint
 black
 pytest
 pandas
+databricks-sql-connector
+python-dotenv

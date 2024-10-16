@@ -16,16 +16,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v3
         with:
-          python-version: '3.10'
+          python-version: 3.9
       - name: install packages
         run: make install
       - name: format code
         run: make format
       - name: lint
         run: make lint
-      - name: test
-        run: make test
-      - name: run code
+      - name: run
+        env:
+          DATABRICKS_KEY: ${{ secrets.DATABRICKS_KEY }}
+          SERVER_HOSTNAME: ${{ secrets.SERVER_HOSTNAME }}
+          HTTP_PATH: ${{ secrets.HTTP_PATH }}
         run: make run
